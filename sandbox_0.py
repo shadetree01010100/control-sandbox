@@ -23,7 +23,9 @@ class Sandbox:
         self.process = 0.0
         self.process_values = []
         self.control_values = []
-        self.runing = False
+        self.running = False
+        self.lmb_state = False
+        self.rmb_state = False
 
         pygame.init()
         pygame.font.init()
@@ -34,8 +36,6 @@ class Sandbox:
 
     def run(self):
         self.running = True
-        lmb_state = False
-        rmb_state = False
         while self.running:
             self._handle_user_input()
             self.process, control_value = self.controller.step(
@@ -109,37 +109,37 @@ class Sandbox:
 
                 # left mouse, change set_point
                 if lmb:
-                    if not lmb_state:  # do a thing on click
-                        lmb_state = my
+                    if not self.lmb_state:  # do a thing on click
+                        self.lmb_state = my
                         new_set_point = self.set_point
-                    delta = my - lmb_state
+                    delta = my - self.lmb_state
                     new_set_point = self.set_point + delta
                     # clamp range
                     new_set_point = min(new_set_point, self.WINDOW_HEIGHT - 1)
                     new_set_point = max(new_set_point, 0)
                     self.set_point = new_set_point
                     # set state
-                    lmb_state = my
+                    self.lmb_state = my
                 if not lmb:
-                    if lmb_state:  # do a thing on release
-                        lmb_state = False
+                    if self.lmb_state:  # do a thing on release
+                        self.lmb_state = False
 
                 # right mouse, directly change process
                 if rmb:
-                    if not rmb_state:  # do a thing on click
-                        rmb_state = my
+                    if not self.rmb_state:  # do a thing on click
+                        self.rmb_state = my
                         new_process = self.process
-                    delta = my - rmb_state
+                    delta = my - self.rmb_state
                     new_process = self.process + delta
                     self.process = new_process
                     # clamp range
                     self.process = min(self.process, self.WINDOW_HEIGHT - 1)
                     self.process = max(self.process, 0)
                     # set state
-                    rmb_state = my
+                    self.rmb_state = my
                 if not rmb:
-                    if rmb_state:  # do a thing on release
-                        rmb_state = False
+                    if self.rmb_state:  # do a thing on release
+                        self.rmb_state = False
 
                 # check for exit commands
                 # any key, ctrl-C, or close pygame window
