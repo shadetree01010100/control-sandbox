@@ -37,7 +37,71 @@ class Sandbox:
         lmb_state = False
         rmb_state = False
         while self.running:
-            for event in pygame.event.get():
+            self._handle_user_input()
+            self.process, control_value = self.controller.step(
+                self.process, self.set_point)
+
+            # scale control_value to fit window
+            center = self.WINDOW_HEIGHT // 2
+            scaled_control_value = center * control_value + (center - 1)
+
+            # update historgram series
+            self.control_values = self.control_values[-self.HISTOGRAM_SIZE:]
+            self.process_values = self.process_values[-self.HISTOGRAM_SIZE:]
+            self.set_points = self.set_points[-self.HISTOGRAM_SIZE:]
+            self.process_values.append(self.process)
+            self.set_points.append(self.set_point)
+            self.control_values.append(scaled_control_value)
+
+            self._draw_sandbox(control_value)
+            time.sleep(self.STEP_INTERVAL)
+
+        # user exit
+        pygame.display.quit()
+
+    def _draw_line(self, start, stop, color=WHITE, width=3):
+        # Y axis is upside down
+        start = (start[0], (self.WINDOW_HEIGHT - 1) - start[1])
+        stop = (stop[0], (self.WINDOW_HEIGHT - 1) - stop[1])
+        pygame.draw.line(self.surface, color, start, stop, width)
+
+    def _draw_sandbox(self, control_value):
+        self.surface.fill(D_GRAY)
+        self._draw_text(
+            'process: {}'.format(round(self.process, 1)), 1, color=WHITE)
+        self._draw_text(
+            'set point: {}'.format(self.set_point), 2, color=RED)
+        self._draw_text(
+            'control: {}'.format(round(control_value, 3)), 4, color=GREEN)
+        for r in range(self.HISTOGRAM_SIZE):
+            if r == 0:
+                continue
+            try:
+                self._draw_line(
+                    ((r - 1) * self.X_SCALE, self.process_values[r - 1]),
+                    (r * self.X_SCALE, self.process_values[r]))
+                self._draw_line(
+                    ((r - 1) * self.X_SCALE, self.set_points[r - 1]),
+                    (r * self.X_SCALE, self.set_points[r]),
+                    color=RED)
+                self._draw_line(
+                    ((r - 1) * self.X_SCALE, self.control_values[r - 1]),
+                    (r * self.X_SCALE, self.control_values[r]),
+                    color=GREEN)
+            except IndexError:
+                # fewer then HISTOGRAM_SIZE points are buffered so far
+                break
+        pygame.display.update()
+
+    def _draw_text(self, text, line_num=0, coords=(0, 0), color=WHITE):
+        if line_num:
+            coords = (2, (line_num - 1) * self.FONT_SIZE // 2 + line_num * 2)
+        antialias = True
+        text = self.font.render(text, antialias, color)
+        self.surface.blit(text, coords)
+
+    def _handle_user_input(self):
+        for event in pygame.event.get():
                 lmb, mmb, rmb = pygame.mouse.get_pressed()
                 mx, my = pygame.mouse.get_pos()
                 # Y axis is upside down
@@ -82,66 +146,6 @@ class Sandbox:
                 if event.type in [pygame.QUIT, pygame.KEYDOWN]:
                     self.running = False
                     break
-
-            # track stuff
-            self.process_values = self.process_values[-self.HISTOGRAM_SIZE:]
-            self.process_values.append(self.process)
-            self.set_points = self.set_points[-self.HISTOGRAM_SIZE:]
-            self.set_points.append(self.set_point)
-
-            # controller interface
-            self.process, control_value = self.controller.step(
-                self.process, self.set_point)
-            # scale control_value to fit window
-            center = self.WINDOW_HEIGHT // 2
-            scaled_control_value = center * control_value + (center - 1)
-            self.control_values = self.control_values[-self.HISTOGRAM_SIZE:]
-            self.control_values.append(scaled_control_value)
-
-            self._draw_sandbox(control_value)
-            time.sleep(self.STEP_INTERVAL)
-        pygame.display.quit()
-
-    def _draw_line(self, start, stop, color=WHITE, width=3):
-        # Y axis is upside down
-        start = (start[0], (self.WINDOW_HEIGHT - 1) - start[1])
-        stop = (stop[0], (self.WINDOW_HEIGHT - 1) - stop[1])
-        pygame.draw.line(self.surface, color, start, stop, width)
-
-    def _draw_sandbox(self, control_value):
-        self.surface.fill(D_GRAY)
-        self._draw_text(
-            'process: {}'.format(round(self.process, 1)), 1, color=WHITE)
-        self._draw_text(
-            'set point: {}'.format(self.set_point), 2, color=RED)
-        self._draw_text(
-            'control: {}'.format(round(control_value, 3)), 4, color=GREEN)
-        for r in range(self.HISTOGRAM_SIZE):
-            if r == 0:
-                continue
-            try:
-                self._draw_line(
-                    ((r - 1) * self.X_SCALE, self.process_values[r - 1]),
-                    (r * self.X_SCALE, self.process_values[r]))
-                self._draw_line(
-                    ((r - 1) * self.X_SCALE, self.set_points[r - 1]),
-                    (r * self.X_SCALE, self.set_points[r]),
-                    color=RED)
-                self._draw_line(
-                    ((r - 1) * self.X_SCALE, self.control_values[r - 1]),
-                    (r * self.X_SCALE, self.control_values[r]),
-                    color=GREEN)
-            except IndexError:
-                # fewer then HISTOGRAM_SIZE points are buffered so far
-                break
-        pygame.display.update()
-
-    def _draw_text(self, text, line_num=0, coords=(0, 0), color=WHITE):
-        if line_num:
-            coords = (2, (line_num - 1) * self.FONT_SIZE // 2 + line_num * 2)
-        antialias = True
-        text = self.font.render(text, antialias, color)
-        self.surface.blit(text, coords)
 
 if __name__ == '__main__':
     s = Sandbox(Controller, Driver)
